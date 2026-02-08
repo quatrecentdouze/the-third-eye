@@ -30,11 +30,29 @@ struct LastError {
     std::string message;
 };
 
+struct ProcessInfo {
+    uint32_t    pid;
+    std::string name;
+    double      cpu_percent;
+    uint64_t    memory_bytes;
+};
+
+struct AlertEntry {
+    std::string type;
+    std::string severity;
+    std::string message;
+    std::string timestamp;
+    double      value;
+    double      threshold;
+    bool        active;
+};
+
 class Agent {
 public:
     struct Config {
         uint16_t port      = 9100;
         int      interval  = 1;
+        int      top_n     = 5;
         LogLevel log_level = LogLevel::Info;
     };
 
@@ -55,6 +73,12 @@ public:
     std::vector<LogEntry> get_logs(const std::string& level_filter = "", int limit = 500) const;
     void update_config(int new_interval, const std::string& new_log_level);
 
+    std::vector<ProcessInfo> get_processes() const;
+    void set_processes(std::vector<ProcessInfo> procs);
+
+    std::vector<AlertEntry> get_alerts() const;
+    std::vector<AlertEntry> active_alerts() const;
+
     void log_info(const std::string& msg);
     void log_debug(const std::string& msg);
     void log_error(const std::string& msg);
@@ -63,6 +87,7 @@ private:
     void collect_all();
     void register_agent_metrics();
     void add_log(const std::string& level, const std::string& msg);
+    void evaluate_alerts();
 
     Config config_;
     Registry registry_;
@@ -82,6 +107,16 @@ private:
     mutable std::mutex error_mutex_;
     LastError last_error_;
     std::atomic<double> total_errors_{0.0};
+
+    mutable std::mutex process_mutex_;
+    std::vector<ProcessInfo> processes_;
+
+    static constexpr size_t MAX_ALERT_HISTORY = 100;
+    mutable std::mutex alert_mutex_;
+    std::deque<AlertEntry> alert_history_;
+    std::chrono::steady_clock::time_point last_cpu_alert_{};
+    std::chrono::steady_clock::time_point last_mem_alert_{};
+    std::chrono::steady_clock::time_point last_collect_alert_{};
 };
 
 }

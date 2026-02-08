@@ -686,3 +686,116 @@ body {
     transform: translateY(0);
   }
 }
+
+/* Process table */
+.process-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.process-table th {
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.process-table td {
+  padding: 7px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  color: var(--text-secondary);
+}
+
+.process-table tbody tr:hover {
+  background: rgba(108, 92, 231, 0.04);
+}
+
+.process-table .row-hot {
+  background: rgba(255, 83, 112, 0.06);
+}
+
+.process-table .row-hot:hover {
+  background: rgba(255, 83, 112, 0.1);
+}
+
+.process-name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.process-pid {
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Alert cards */
+.alert-active-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.alert-card {
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+}
+
+.alert-active {
+  border-color: rgba(255, 83, 112, 0.25);
+  background: var(--red-bg);
+}
+
+.alert-card-header {
+  display: flex;
+  align-items: center;
+  color: var(--red);
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.alert-card-message {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.alert-card-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Nav badge */
+.nav-badge {
+  margin-left: auto;
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+}
+
+/* Update banner */
+.update-banner {
+  margin: 0 12px 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(108, 92, 231, 0.1);
+  border: 1px solid rgba(108, 92, 231, 0.25);
+  text-align: center;
+  color: var(--accent);
+}

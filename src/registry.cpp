@@ -37,6 +37,20 @@ void Registry::gauge_set(const std::string& name, const std::string& labels, dou
     if (s) s->value = value;
 }
 
+void Registry::gauge_replace_all(const std::string& name,
+                                  const std::vector<std::pair<std::string, double>>& entries) {
+    std::unique_lock lock(mutex_);
+    auto it = metrics_.find(name);
+    if (it == metrics_.end()) return;
+
+    std::vector<MetricSeries> new_series;
+    new_series.reserve(entries.size());
+    for (const auto& [labels, value] : entries) {
+        new_series.push_back(MetricSeries{labels, value});
+    }
+    it->second.series = std::move(new_series);
+}
+
 void Registry::counter_inc(const std::string& name, double delta) {
     counter_inc(name, "", delta);
 }

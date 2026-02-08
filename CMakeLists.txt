@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # --- Build info defines ---
-set(THIRD_EYE_VERSION "1.0.0")
+set(THIRD_EYE_VERSION "1.1.1")
 
 # Detect git commit hash (or "unknown")
 execute_process(
@@ -55,6 +55,7 @@ if(WIN32)
         src/collectors/cpu_windows.cpp
         src/collectors/memory_windows.cpp
         src/collectors/system_windows.cpp
+        src/collectors/process_windows.cpp
     )
 else()
     set(PLATFORM_SOURCES "")
@@ -86,5 +87,5 @@ endif()
 
 # --- Platform libraries ---
 if(WIN32)
-    target_link_libraries(${PROJECT_NAME} PRIVATE ws2_32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE ws2_32 psapi)
 endif()

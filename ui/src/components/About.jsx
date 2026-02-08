@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Icon } from 'fontnotawesome';
-import { fetchLogs } from '../services/agentApi.js';
+import { fetchLogs, fetchAlerts } from '../services/agentApi.js';
 import { useToast, Toast } from './Toast.jsx';
 
 const HEALTH_COLORS = { healthy: 'var(--green)', degraded: 'var(--orange)', unhealthy: 'var(--red)' };
@@ -70,8 +70,14 @@ export default function About({ status, connected }) {
                     collect_errors: s.collect_errors,
                     http_requests: s.http_requests,
                 },
+                top_processes: s.top_processes || [],
                 recent_logs: recentLogs,
             };
+
+            try {
+                const alertData = await fetchAlerts();
+                snapshot.alerts = alertData;
+            } catch { }
 
             const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -162,6 +168,10 @@ export default function About({ status, connected }) {
                 <div className="about-row">
                     <span className="about-key">API Logs</span>
                     <span className="about-value">http://127.0.0.1:{s.port || 9100}/api/logs</span>
+                </div>
+                <div className="about-row">
+                    <span className="about-key">API Alerts</span>
+                    <span className="about-value">http://127.0.0.1:{s.port || 9100}/api/alerts</span>
                 </div>
             </div>
 

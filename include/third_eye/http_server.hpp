@@ -33,6 +33,7 @@ private:
     std::string handle_api_status();
     std::string handle_api_logs(const std::string& query);
     std::string handle_api_config_post(const std::string& body);
+    std::string handle_api_alerts();
 
     uint16_t        port_;
     MetricsProvider provider_;

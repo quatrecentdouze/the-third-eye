@@ -4,6 +4,7 @@
 #include <chrono>
 #include <iomanip>
 #include <sstream>
+#include <algorithm>
 
 namespace third_eye {
 
@@ -86,6 +87,97 @@ std::string Agent::compute_health() const {
     return "healthy";
 }
 
+std::vector<ProcessInfo> Agent::get_processes() const {
+    std::lock_guard lock(process_mutex_);
+    return processes_;
+}
+
+void Agent::set_processes(std::vector<ProcessInfo> procs) {
+    std::lock_guard lock(process_mutex_);
+    processes_ = std::move(procs);
+}
+
+std::vector<AlertEntry> Agent::get_alerts() const {
+    std::lock_guard lock(alert_mutex_);
+    return {alert_history_.begin(), alert_history_.end()};
+}
+
+std::vector<AlertEntry> Agent::active_alerts() const {
+    std::lock_guard lock(alert_mutex_);
+    std::vector<AlertEntry> result;
+    for (const auto& a : alert_history_) {
+        if (a.active) result.push_back(a);
+    }
+    return result;
+}
+
+void Agent::evaluate_alerts() {
+    auto now = std::chrono::steady_clock::now();
+    auto snap = registry_.snapshot();
+
+    double cpu_val = 0, mem_used = 0, mem_total = 0, collect_dur = 0;
+    for (const auto& m : snap) {
+        if (m.labels.empty()) {
+            if (m.name == "the_third_eye_cpu_usage_percent") cpu_val = m.value;
+            else if (m.name == "the_third_eye_memory_used_bytes") mem_used = m.value;
+            else if (m.name == "the_third_eye_memory_total_bytes") mem_total = m.value;
+            else if (m.name == "the_third_eye_collect_duration_seconds") collect_dur = m.value;
+        }
+    }
+
+    double mem_pct = (mem_total > 0) ? (mem_used / mem_total * 100.0) : 0;
+
+    auto ts = timestamp_now();
+    std::lock_guard lock(alert_mutex_);
+
+    struct Rule {
+        const char* type;
+        double value;
+        double threshold;
+        std::chrono::steady_clock::time_point& last_fired;
+        std::chrono::seconds cooldown;
+    };
+
+    Rule rules[] = {
+        {"cpu_high",      cpu_val,     90.0, last_cpu_alert_,     std::chrono::seconds(30)},
+        {"memory_high",   mem_pct,     90.0, last_mem_alert_,     std::chrono::seconds(30)},
+        {"collect_slow",  collect_dur, 2.0,  last_collect_alert_, std::chrono::seconds(60)},
+    };
+
+    for (auto& rule : rules) {
+        bool firing = rule.value > rule.threshold;
+
+        for (auto& a : alert_history_) {
+            if (a.type == rule.type && a.active && !firing) {
+                a.active = false;
+            }
+        }
+
+        if (firing && (now - rule.last_fired >= rule.cooldown)) {
+            std::ostringstream msg;
+            msg.imbue(std::locale::classic());
+            msg << rule.type << ": " << std::fixed << std::setprecision(1) << rule.value;
+            if (std::string(rule.type) == "collect_slow") {
+                msg << "s > " << rule.threshold << "s";
+            } else {
+                msg << "% > " << rule.threshold << "%";
+            }
+
+            alert_history_.push_back({
+                rule.type, "warning", msg.str(), ts,
+                rule.value, rule.threshold, true
+            });
+            rule.last_fired = now;
+
+            while (alert_history_.size() > MAX_ALERT_HISTORY) {
+                alert_history_.pop_front();
+            }
+
+            log_info("Alert: " + msg.str());
+        }
+    }
+}
+
 Agent::Agent(Config config)
     : config_(config)
     , start_time_(std::chrono::steady_clock::now()) {}
@@ -116,6 +208,7 @@ void Agent::run() {
     log_info("The Third Eye agent v" THIRD_EYE_VERSION " starting");
     log_info("  Port:     " + std::to_string(config_.port));
     log_info("  Interval: " + std::to_string(config_.interval) + "s");
+    log_info("  Top N:    " + std::to_string(config_.top_n));
     log_info("  Log level: " + std::string(config_.log_level == LogLevel::Debug ? "debug" : "info"));
     log_info("  Collectors: " + std::to_string(collectors_.size()));
 
@@ -206,6 +299,8 @@ void Agent::collect_all() {
     double cycle_s = std::chrono::duration<double>(
         std::chrono::steady_clock::now() - cycle_start).count();
     registry_.gauge_set("the_third_eye_collect_duration_seconds", cycle_s);
+
+    evaluate_alerts();
 
     log_debug("Collection cycle completed in " +
               std::to_string(static_cast<int>(cycle_s * 1e6)) + " us");
