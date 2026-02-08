@@ -39,7 +39,7 @@
 
 
 #ifndef THIRD_EYE_VERSION
-  #define THIRD_EYE_VERSION "1.1.7"
+  #define THIRD_EYE_VERSION "1.1.8"
 #endif
 #ifndef THIRD_EYE_GIT_COMMIT
   #define THIRD_EYE_GIT_COMMIT "unknown"

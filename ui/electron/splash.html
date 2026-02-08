@@ -69,6 +69,15 @@
             letter-spacing: 0.3px;
         }
 
+        .download-detail {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.2);
+            margin-top: 6px;
+            font-family: 'Consolas', 'SF Mono', monospace;
+            letter-spacing: 0.2px;
+            height: 14px;
+        }
+
         .version {
             position: absolute;
             bottom: 14px;
@@ -91,15 +100,33 @@
         <div class="progress-fill" id="progress"></div>
     </div>
     <div class="status" id="status">Initializing...</div>
+    <div class="download-detail" id="download-detail"></div>
     <div class="version" id="version"></div>
 
     <script>
         const { ipcRenderer } = require('electron');
 
+        function formatBytes(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1048576).toFixed(1) + ' MB';
+        }
+
         ipcRenderer.on('splash-progress', (_, { percent, text, version }) => {
             document.getElementById('progress').style.width = percent + '%';
             document.getElementById('status').textContent = text;
             if (version) document.getElementById('version').textContent = 'v' + version;
+        });
+
+        ipcRenderer.on('splash-download', (_, data) => {
+            const el = document.getElementById('download-detail');
+            if (!data) {
+                el.textContent = '';
+                return;
+            }
+            if (data.total > 0) {
+                el.textContent = `${formatBytes(data.transferred)} / ${formatBytes(data.total)} — ${formatBytes(data.speed)}/s`;
+            }
         });
     </script>
 </body>

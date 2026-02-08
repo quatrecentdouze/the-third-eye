@@ -31,7 +31,7 @@ function splashProgress(percent, text) {
 function createSplash() {
     splashWindow = new BrowserWindow({
         width: 340,
-        height: 220,
+        height: 240,
         frame: false,
         transparent: true,
         resizable: false,
@@ -188,45 +188,101 @@ function createTray() {
 let pendingUpdateVersion = null;
 
 function setupAutoUpdate() {
-    const logPath = path.join(app.getPath('userData'), 'updater.log');
-    const log = (msg) => {
-        const line = `[${new Date().toISOString()}] ${msg}\n`;
-        fs.appendFileSync(logPath, line);
-        console.log(msg);
-    };
+    return new Promise((resolve) => {
+        const logPath = path.join(app.getPath('userData'), 'updater.log');
+        const log = (msg) => {
+            const line = `[${new Date().toISOString()}] ${msg}\n`;
+            fs.appendFileSync(logPath, line);
+            console.log(msg);
+        };
 
-    log(`[updater] App packaged: ${app.isPackaged}, version: ${APP_VERSION}`);
-    if (!app.isPackaged) {
-        log('[updater] Not packaged, skipping auto-update');
-        return;
-    }
+        log(`[updater] App packaged: ${app.isPackaged}, version: ${APP_VERSION}`);
+        if (!app.isPackaged) {
+            log('[updater] Not packaged, skipping auto-update');
+            return resolve({ hasUpdate: false });
+        }
 
-    let autoUpdater;
-    try {
-        autoUpdater = require('electron-updater').autoUpdater;
-        log('[updater] electron-updater loaded successfully');
-    } catch (e) {
-        log(`[updater] Failed to load electron-updater: ${e.message}`);
-        return;
-    }
+        let autoUpdater;
+        try {
+            autoUpdater = require('electron-updater').autoUpdater;
+            log('[updater] electron-updater loaded successfully');
+        } catch (e) {
+            log(`[updater] Failed to load electron-updater: ${e.message}`);
+            return resolve({ hasUpdate: false });
+        }
 
-    autoUpdater.autoDownload = true;
-    autoUpdater.autoInstallOnAppQuit = true;
+        let resolved = false;
+        const done = (result) => {
+            if (resolved) return;
+            resolved = true;
+            resolve(result);
+        };
 
-    autoUpdater.on('checking-for-update', () => log('[updater] Checking for update...'));
-    autoUpdater.on('update-available', (info) => log(`[updater] Update available: ${info.version}`));
-    autoUpdater.on('update-not-available', (info) => log(`[updater] Up to date (latest: ${info.version})`));
-    autoUpdater.on('download-progress', (p) => log(`[updater] Downloading: ${p.percent.toFixed(1)}%`));
-    autoUpdater.on('update-downloaded', (info) => {
-        log(`[updater] Update downloaded: ${info.version}`);
-        pendingUpdateVersion = info.version;
-        notifyRendererOfUpdate();
+        setTimeout(() => {
+            log('[updater] Timeout reached, proceeding without update');
+            done({ hasUpdate: false });
+        }, 30000);
+
+        autoUpdater.autoDownload = true;
+        autoUpdater.autoInstallOnAppQuit = true;
+
+        autoUpdater.on('checking-for-update', () => {
+            log('[updater] Checking for update...');
+            splashProgress(48, 'Checking for updates...');
+        });
+
+        autoUpdater.on('update-available', (info) => {
+            log(`[updater] Update available: ${info.version}`);
+            splashProgress(50, `Downloading v${info.version}...`);
+            splashDownload({ percent: 0, transferred: 0, total: 0, speed: 0, version: info.version });
+        });
+
+        autoUpdater.on('update-not-available', (info) => {
+            log(`[updater] Up to date (latest: ${info.version})`);
+            splashProgress(90, 'Up to date');
+            splashDownload(null);
+            done({ hasUpdate: false });
+        });
+
+        autoUpdater.on('download-progress', (p) => {
+            log(`[updater] Downloading: ${p.percent.toFixed(1)}%`);
+            const mappedPercent = 50 + (p.percent / 100) * 40;
+            splashProgress(Math.round(mappedPercent), `Downloading update...`);
+            splashDownload({
+                percent: p.percent,
+                transferred: p.transferred,
+                total: p.total,
+                speed: p.bytesPerSecond,
+            });
+        });
+
+        autoUpdater.on('update-downloaded', (info) => {
+            log(`[updater] Update downloaded: ${info.version}`);
+            pendingUpdateVersion = info.version;
+            splashProgress(92, `v${info.version} ready to install`);
+            splashDownload(null);
+            done({ hasUpdate: true, version: info.version });
+        });
+
+        autoUpdater.on('error', (err) => {
+            log(`[updater] ERROR: ${err.message}\n${err.stack || ''}`);
+            splashDownload(null);
+            done({ hasUpdate: false });
+        });
+
+        autoUpdater.checkForUpdates()
+            .then((result) => log(`[updater] checkForUpdates resolved: ${JSON.stringify(result?.updateInfo?.version || 'no info')}`))
+            .catch((err) => {
+                log(`[updater] checkForUpdates REJECTED: ${err.message}`);
+                done({ hasUpdate: false });
+            });
     });
-    autoUpdater.on('error', (err) => log(`[updater] ERROR: ${err.message}\n${err.stack || ''}`));
+}
 
-    autoUpdater.checkForUpdates()
-        .then((result) => log(`[updater] checkForUpdates resolved: ${JSON.stringify(result?.updateInfo?.version || 'no info')}`))
-        .catch((err) => log(`[updater] checkForUpdates REJECTED: ${err.message}`));
+function splashDownload(data) {
+    if (splashWindow && !splashWindow.isDestroyed()) {
+        splashWindow.webContents.send('splash-download', data);
+    }
 }
 
 function notifyRendererOfUpdate() {
@@ -294,9 +350,12 @@ app.whenReady().then(async () => {
     startAgent();
 
     const agentReady = await waitForAgent();
-    splashProgress(75, agentReady ? 'Agent ready' : 'Agent not detected');
+    splashProgress(40, agentReady ? 'Agent ready' : 'Agent not detected');
 
-    splashProgress(80, 'Loading dashboard...');
+    splashProgress(45, 'Checking for updates...');
+    const updateResult = await setupAutoUpdate();
+
+    splashProgress(92, 'Loading dashboard...');
     const useDevServer = await checkViteRunning();
     if (useDevServer) {
         console.log('[electron] Using Vite dev server at http://localhost:5173');
@@ -304,11 +363,9 @@ app.whenReady().then(async () => {
         console.log('[electron] Loading production build from dist/');
     }
 
-    splashProgress(90, 'Almost ready...');
+    splashProgress(96, 'Almost ready...');
     createWindow(useDevServer);
     createTray();
-
-    setupAutoUpdate();
     startAlertPoller();
 });
 
