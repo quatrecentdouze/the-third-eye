@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # --- Build info defines ---
-set(THIRD_EYE_VERSION "1.1.4")
+set(THIRD_EYE_VERSION "1.1.5")
 
 # Detect git commit hash (or "unknown")
 execute_process(

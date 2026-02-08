@@ -149,6 +149,10 @@ function createWindow(useDevServer) {
         mainWindow.show();
     });
 
+    mainWindow.webContents.on('did-finish-load', () => {
+        notifyRendererOfUpdate();
+    });
+
     mainWindow.on('close', (e) => {
         if (tray) {
             e.preventDefault();
@@ -176,6 +180,8 @@ function createTray() {
         if (mainWindow) { mainWindow.show(); mainWindow.focus(); }
     });
 }
+
+let pendingUpdateVersion = null;
 
 function setupAutoUpdate() {
     const logPath = path.join(app.getPath('userData'), 'updater.log');
@@ -209,15 +215,19 @@ function setupAutoUpdate() {
     autoUpdater.on('download-progress', (p) => log(`[updater] Downloading: ${p.percent.toFixed(1)}%`));
     autoUpdater.on('update-downloaded', (info) => {
         log(`[updater] Update downloaded: ${info.version}`);
-        if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('update-ready', info.version);
-        }
+        pendingUpdateVersion = info.version;
+        notifyRendererOfUpdate();
     });
     autoUpdater.on('error', (err) => log(`[updater] ERROR: ${err.message}\n${err.stack || ''}`));
 
     autoUpdater.checkForUpdates()
         .then((result) => log(`[updater] checkForUpdates resolved: ${JSON.stringify(result?.updateInfo?.version || 'no info')}`))
         .catch((err) => log(`[updater] checkForUpdates REJECTED: ${err.message}`));
+}
+
+function notifyRendererOfUpdate() {
+    if (!pendingUpdateVersion || !mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.webContents.send('update-ready', pendingUpdateVersion);
 }
 
 ipcMain.on('window-minimize', () => { if (mainWindow) mainWindow.minimize(); });
@@ -227,6 +237,7 @@ ipcMain.on('window-maximize', () => {
     }
 });
 ipcMain.on('window-close', () => { if (mainWindow) mainWindow.close(); });
+ipcMain.handle('get-update-status', () => pendingUpdateVersion);
 ipcMain.on('install-update', () => {
     try {
         const { autoUpdater } = require('electron-updater');

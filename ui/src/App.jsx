@@ -29,6 +29,9 @@ export default function App() {
         if (window.electronAPI?.onUpdateReady) {
             window.electronAPI.onUpdateReady((version) => setUpdateVersion(version));
         }
+        if (window.electronAPI?.getUpdateStatus) {
+            window.electronAPI.getUpdateStatus().then((v) => { if (v) setUpdateVersion(v); });
+        }
     }, []);
 
     const pollStatus = useCallback(async () => {
