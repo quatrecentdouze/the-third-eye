@@ -178,32 +178,46 @@ function createTray() {
 }
 
 function setupAutoUpdate() {
-    if (!app.isPackaged) return;
+    const logPath = path.join(app.getPath('userData'), 'updater.log');
+    const log = (msg) => {
+        const line = `[${new Date().toISOString()}] ${msg}\n`;
+        fs.appendFileSync(logPath, line);
+        console.log(msg);
+    };
+
+    log(`[updater] App packaged: ${app.isPackaged}, version: ${APP_VERSION}`);
+    if (!app.isPackaged) {
+        log('[updater] Not packaged, skipping auto-update');
+        return;
+    }
 
     let autoUpdater;
     try {
         autoUpdater = require('electron-updater').autoUpdater;
-    } catch {
-        console.log('[electron] electron-updater not available');
+        log('[updater] electron-updater loaded successfully');
+    } catch (e) {
+        log(`[updater] Failed to load electron-updater: ${e.message}`);
         return;
     }
 
     autoUpdater.autoDownload = true;
     autoUpdater.autoInstallOnAppQuit = true;
 
-    autoUpdater.on('checking-for-update', () => console.log('[updater] Checking for update...'));
-    autoUpdater.on('update-available', (info) => console.log('[updater] Update available:', info.version));
-    autoUpdater.on('update-not-available', () => console.log('[updater] Up to date'));
-    autoUpdater.on('download-progress', (p) => console.log(`[updater] Downloading: ${p.percent.toFixed(0)}%`));
+    autoUpdater.on('checking-for-update', () => log('[updater] Checking for update...'));
+    autoUpdater.on('update-available', (info) => log(`[updater] Update available: ${info.version}`));
+    autoUpdater.on('update-not-available', (info) => log(`[updater] Up to date (latest: ${info.version})`));
+    autoUpdater.on('download-progress', (p) => log(`[updater] Downloading: ${p.percent.toFixed(1)}%`));
     autoUpdater.on('update-downloaded', (info) => {
-        console.log('[updater] Update downloaded:', info.version);
+        log(`[updater] Update downloaded: ${info.version}`);
         if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('update-ready', info.version);
         }
     });
-    autoUpdater.on('error', (err) => console.error('[updater] Error:', err.message));
+    autoUpdater.on('error', (err) => log(`[updater] ERROR: ${err.message}\n${err.stack || ''}`));
 
-    autoUpdater.checkForUpdates().catch(() => { });
+    autoUpdater.checkForUpdates()
+        .then((result) => log(`[updater] checkForUpdates resolved: ${JSON.stringify(result?.updateInfo?.version || 'no info')}`))
+        .catch((err) => log(`[updater] checkForUpdates REJECTED: ${err.message}`));
 }
 
 ipcMain.on('window-minimize', () => { if (mainWindow) mainWindow.minimize(); });
