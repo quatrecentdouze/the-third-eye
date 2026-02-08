@@ -22,6 +22,13 @@ function getAgentPath() {
     return path.join(__dirname, '..', '..', 'build', 'the_third_eye.exe');
 }
 
+function getIconPath() {
+    if (app.isPackaged) {
+        return path.join(process.resourcesPath, 'icon.png');
+    }
+    return path.join(__dirname, '..', '..', 'img', 'icon.png');
+}
+
 function splashProgress(percent, text) {
     if (splashWindow && !splashWindow.isDestroyed()) {
         splashWindow.webContents.send('splash-progress', { percent, text, version: APP_VERSION });
@@ -128,6 +135,7 @@ function createWindow(useDevServer) {
         minWidth: 900,
         minHeight: 600,
         title: 'the-third-eye',
+        icon: getIconPath(),
         backgroundColor: '#0a0a0f',
         frame: false,
         webPreferences: {
@@ -161,6 +169,11 @@ function createWindow(useDevServer) {
         if (tray) {
             e.preventDefault();
             mainWindow.hide();
+            tray.displayBalloon({
+                iconType: 'info',
+                title: 'The Third Eye',
+                content: 'Still running in the background. Double-click the tray icon to reopen.',
+            });
         }
     });
 
@@ -170,7 +183,7 @@ function createWindow(useDevServer) {
 }
 
 function createTray() {
-    const icon = nativeImage.createEmpty();
+    const icon = nativeImage.createFromPath(getIconPath()).resize({ width: 16, height: 16 });
     tray = new Tray(icon);
     tray.setToolTip('the-third-eye — System Monitor');
 

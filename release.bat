@@ -61,6 +61,7 @@ set "MINGW_DIR=!CLION_DIR!\bin\mingw\bin"
 set "PATH=!CMAKE_DIR!;!MINGW_DIR!;%PATH%"
 
 echo  [2/6] Building C++ agent...
+taskkill /f /im the_third_eye.exe >nul 2>&1
 cmake -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release >nul 2>&1
 cmake --build build 2>&1
 if %errorlevel% neq 0 (echo  [ERROR] Agent build failed. & pause & exit /b 1)

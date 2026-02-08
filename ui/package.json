@@ -1,6 +1,6 @@
 {
   "name": "the-third-eye-ui",
-  "version": "1.1.8",
+  "version": "1.1.9",
   "description": "Premium desktop UI for the-third-eye monitoring agent",
   "author": "tlmreact",
   "main": "electron/main.js",
@@ -25,6 +25,10 @@
       {
         "from": "../build/the_third_eye.exe",
         "to": "agent/the_third_eye.exe"
+      },
+      {
+        "from": "../img/icon.png",
+        "to": "icon.png"
       }
     ],
     "win": {
