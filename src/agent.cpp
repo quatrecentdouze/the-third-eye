@@ -139,9 +139,9 @@ void Agent::evaluate_alerts() {
     };
 
     Rule rules[] = {
-        {"cpu_high",      cpu_val,     90.0, last_cpu_alert_,     std::chrono::seconds(30)},
-        {"memory_high",   mem_pct,     90.0, last_mem_alert_,     std::chrono::seconds(30)},
-        {"collect_slow",  collect_dur, 2.0,  last_collect_alert_, std::chrono::seconds(60)},
+        {"cpu_high",      cpu_val,     config_.cpu_threshold,     last_cpu_alert_,     std::chrono::seconds(30)},
+        {"memory_high",   mem_pct,     config_.memory_threshold,  last_mem_alert_,     std::chrono::seconds(30)},
+        {"collect_slow",  collect_dur, config_.collect_threshold,  last_collect_alert_, std::chrono::seconds(60)},
     };
 
     for (auto& rule : rules) {
@@ -176,6 +176,15 @@ void Agent::evaluate_alerts() {
             log_info("Alert: " + msg.str());
         }
     }
+}
+
+void Agent::update_thresholds(double cpu, double mem, double collect) {
+    config_.cpu_threshold     = std::clamp(cpu, 10.0, 100.0);
+    config_.memory_threshold  = std::clamp(mem, 10.0, 100.0);
+    config_.collect_threshold = std::clamp(collect, 0.5, 30.0);
+    log_info("Thresholds updated: cpu=" + std::to_string(config_.cpu_threshold)
+           + " mem=" + std::to_string(config_.memory_threshold)
+           + " collect=" + std::to_string(config_.collect_threshold));
 }
 
 Agent::Agent(Config config)

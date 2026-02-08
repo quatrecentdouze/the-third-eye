@@ -39,7 +39,7 @@
 
 
 #ifndef THIRD_EYE_VERSION
-  #define THIRD_EYE_VERSION "1.1.5"
+  #define THIRD_EYE_VERSION "1.1.7"
 #endif
 #ifndef THIRD_EYE_GIT_COMMIT
   #define THIRD_EYE_GIT_COMMIT "unknown"
@@ -380,6 +380,10 @@ std::string HttpServer::handle_api_status() {
 
         auto active = agent_->active_alerts();
         out << R"(,"active_alerts_count":)" << active.size();
+
+        out << R"(,"cpu_threshold":)" << json_double(agent_->config().cpu_threshold);
+        out << R"(,"memory_threshold":)" << json_double(agent_->config().memory_threshold);
+        out << R"(,"collect_threshold":)" << json_double(agent_->config().collect_threshold);
     }
 
     out << "}";
@@ -449,6 +453,24 @@ std::string HttpServer::handle_api_config_post(const std::string& body) {
     log_level = find_str("log_level");
 
     agent_->update_config(interval, log_level);
+
+    auto find_double = [&](const std::string& key) -> double {
+        auto pos = body.find("\"" + key + "\"");
+        if (pos == std::string::npos) return -1.0;
+        pos = body.find(':', pos);
+        if (pos == std::string::npos) return -1.0;
+        try { return std::stod(body.substr(pos + 1)); } catch (...) { return -1.0; }
+    };
+
+    double cpu_t  = find_double("cpu_threshold");
+    double mem_t  = find_double("memory_threshold");
+    double col_t  = find_double("collect_threshold");
+
+    auto& cfg = agent_->config();
+    if (cpu_t < 0) cpu_t = cfg.cpu_threshold;
+    if (mem_t < 0) mem_t = cfg.memory_threshold;
+    if (col_t < 0) col_t = cfg.collect_threshold;
+    agent_->update_thresholds(cpu_t, mem_t, col_t);
 
     return R"({"ok":true})";
 }

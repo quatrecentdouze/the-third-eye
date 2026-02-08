@@ -38,8 +38,8 @@ if /i not "%CONFIRM%"=="y" (echo  Aborted. & pause & exit /b 0)
 echo.
 echo  [1/6] Bumping version to %VERSION%...
 
-:: ─── Bump versions using node (no quoting issues) ───
-node -e "const fs=require('fs'); const v='%VERSION%'; const r=(f,re,s)=>fs.writeFileSync(f,fs.readFileSync(f,'utf8').replace(re,s)); r('CMakeLists.txt',/THIRD_EYE_VERSION \"[^\"]+\"/,'THIRD_EYE_VERSION \"'+v+'\"'); r('ui/package.json',/\"version\": \"[^\"]+\"/,'\"version\": \"'+v+'\"'); r('src/http_server.cpp',/THIRD_EYE_VERSION \"[^\"]+\"/,'THIRD_EYE_VERSION \"'+v+'\"'); console.log('  Bumped to '+v);"
+:: ─── Bump versions ───
+node scripts\bump.js %VERSION%
 
 if %errorlevel% neq 0 (echo  [ERROR] Version bump failed. & pause & exit /b 1)
 echo  [OK] Version bumped.
@@ -62,7 +62,7 @@ set "PATH=!CMAKE_DIR!;!MINGW_DIR!;%PATH%"
 
 echo  [2/6] Building C++ agent...
 cmake -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release >nul 2>&1
-cmake --build build >nul 2>&1
+cmake --build build 2>&1
 if %errorlevel% neq 0 (echo  [ERROR] Agent build failed. & pause & exit /b 1)
 echo  [OK] Agent built.
 echo.

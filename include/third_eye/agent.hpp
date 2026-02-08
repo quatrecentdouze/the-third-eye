@@ -54,6 +54,9 @@ public:
         int      interval  = 1;
         int      top_n     = 5;
         LogLevel log_level = LogLevel::Info;
+        double cpu_threshold     = 90.0;
+        double memory_threshold  = 90.0;
+        double collect_threshold = 2.0;
     };
 
     explicit Agent(Config config);
@@ -72,6 +75,7 @@ public:
 
     std::vector<LogEntry> get_logs(const std::string& level_filter = "", int limit = 500) const;
     void update_config(int new_interval, const std::string& new_log_level);
+    void update_thresholds(double cpu, double mem, double collect);
 
     std::vector<ProcessInfo> get_processes() const;
     void set_processes(std::vector<ProcessInfo> procs);

@@ -1,8 +1,12 @@
-const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, Notification } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
 const { spawn } = require('child_process');
+const Store = require('electron-store');
+
+const store = new Store({ defaults: { notificationsEnabled: true } });
+let seenAlertKeys = new Set();
 
 let mainWindow = null;
 let splashWindow = null;
@@ -244,6 +248,44 @@ ipcMain.on('install-update', () => {
         autoUpdater.quitAndInstall();
     } catch { }
 });
+ipcMain.handle('get-notifications-enabled', () => store.get('notificationsEnabled'));
+ipcMain.on('set-notifications-enabled', (_, enabled) => store.set('notificationsEnabled', enabled));
+
+const TYPE_LABELS = { cpu_high: 'High CPU', memory_high: 'High Memory', collect_slow: 'Slow Collection' };
+
+function startAlertPoller() {
+    setInterval(() => {
+        if (!store.get('notificationsEnabled')) return;
+        const req = http.get('http://localhost:9100/api/alerts', (res) => {
+            let data = '';
+            res.on('data', (chunk) => data += chunk);
+            res.on('end', () => {
+                try {
+                    const json = JSON.parse(data);
+                    const active = json.active || [];
+                    for (const alert of active) {
+                        const key = `${alert.type}:${alert.timestamp}`;
+                        if (seenAlertKeys.has(key)) continue;
+                        seenAlertKeys.add(key);
+                        const iconPath = path.join(__dirname, 'icon.ico');
+                        const n = new Notification({
+                            title: `⚠ ${TYPE_LABELS[alert.type] || alert.type}`,
+                            body: alert.message,
+                            icon: fs.existsSync(iconPath) ? iconPath : undefined,
+                        });
+                        n.on('click', () => {
+                            if (mainWindow) { mainWindow.show(); mainWindow.focus(); }
+                        });
+                        n.show();
+                    }
+                    if (seenAlertKeys.size > 500) seenAlertKeys = new Set();
+                } catch { }
+            });
+        });
+        req.on('error', () => { });
+        req.setTimeout(3000, () => req.destroy());
+    }, 5000);
+}
 
 app.whenReady().then(async () => {
     createSplash();
@@ -267,6 +309,7 @@ app.whenReady().then(async () => {
     createTray();
 
     setupAutoUpdate();
+    startAlertPoller();
 });
 
 app.on('before-quit', () => {

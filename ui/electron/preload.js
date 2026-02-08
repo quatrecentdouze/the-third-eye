@@ -8,4 +8,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onUpdateReady: (cb) => ipcRenderer.on('update-ready', (_, version) => cb(version)),
     installUpdate: () => ipcRenderer.send('install-update'),
     getUpdateStatus: () => ipcRenderer.invoke('get-update-status'),
+    getNotificationsEnabled: () => ipcRenderer.invoke('get-notifications-enabled'),
+    setNotificationsEnabled: (v) => ipcRenderer.send('set-notifications-enabled', v),
 });

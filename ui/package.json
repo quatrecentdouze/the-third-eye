@@ -1,6 +1,6 @@
 {
   "name": "the-third-eye-ui",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "description": "Premium desktop UI for the-third-eye monitoring agent",
   "author": "tlmreact",
   "main": "electron/main.js",
@@ -45,6 +45,7 @@
     }
   },
   "dependencies": {
+    "electron-store": "^6.0.1",
     "electron-updater": "^6.6.2",
     "fontnotawesome": "^1.1.9",
     "react": "^19.1.0",
