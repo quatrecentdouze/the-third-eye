@@ -1,6 +1,7 @@
 import React from 'react';
 import { AreaChart, Area, ResponsiveContainer, Tooltip, YAxis } from 'recharts';
 import { Icon } from 'fontnotawesome';
+import ProcessTable from './ProcessTable.jsx';
 
 function formatBytes(bytes) {
     if (!bytes && bytes !== 0) return '—';
@@ -231,6 +232,8 @@ export default function Dashboard({ status, connected, history, onRetry }) {
                         ))}
                     </div>
                 )}
+
+                <ProcessTable processes={s.top_processes} />
             </div>
         </div>
     );

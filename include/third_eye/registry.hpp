@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <utility>
 #include <unordered_map>
 #include <shared_mutex>
 
@@ -44,6 +45,9 @@ public:
 
 
     void gauge_set(const std::string& name, const std::string& labels, double value);
+
+    void gauge_replace_all(const std::string& name,
+                           const std::vector<std::pair<std::string, double>>& entries);
 
 
     void counter_inc(const std::string& name, double delta = 1.0);

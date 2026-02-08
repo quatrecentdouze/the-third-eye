@@ -159,10 +159,31 @@ if %errorlevel% neq 0 (
 popd
 
 echo.
+echo  [OK] UI built.
+echo.
+
+echo  [3/3] Packaging portable .exe...
+echo.
+
+pushd "%PROJECT_DIR%\ui"
+
+call npx electron-builder --win nsis
+if %errorlevel% neq 0 (
+    echo.
+    echo  [ERROR] electron-builder failed.
+    popd
+    pause
+    exit /b 1
+)
+
+popd
+
+echo.
 echo  ========================================
 echo   Build complete!
 echo  ========================================
 echo.
-echo  To launch: run start.bat
+echo  Portable .exe: ui\dist-electron\
+echo  To develop:    start.bat
 echo.
 pause

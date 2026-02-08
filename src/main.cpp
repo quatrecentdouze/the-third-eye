@@ -22,6 +22,7 @@
 extern std::unique_ptr<third_eye::Collector> create_cpu_collector();
 extern std::unique_ptr<third_eye::Collector> create_memory_collector();
 extern std::unique_ptr<third_eye::Collector> create_system_collector();
+extern std::unique_ptr<third_eye::Collector> create_process_collector(int top_n, third_eye::Agent* agent);
 #endif
 
 
@@ -73,11 +74,12 @@ static bool has_flag(int argc, char* argv[], const std::string& flag) {
 int main(int argc, char* argv[]) {
 
     if (has_flag(argc, argv, "--help") || has_flag(argc, argv, "-h")) {
-        std::cout << "the-third-eye v1.0.0 — System monitoring agent\n\n"
+        std::cout << "the-third-eye v" THIRD_EYE_VERSION " — System monitoring agent\n\n"
                   << "Usage: the_third_eye [options]\n\n"
                   << "Options:\n"
                   << "  --port <int>          HTTP port for /metrics (default: 9100, env: TTE_PORT)\n"
                   << "  --interval <sec>      Collection interval in seconds (default: 1, env: TTE_INTERVAL)\n"
+                  << "  --top-n <int>         Top N processes to track (default: 5, max: 10, env: TTE_TOP_N)\n"
                   << "  --log-level <level>   Log level: info|debug (default: info, env: TTE_LOG_LEVEL)\n"
                   << "  --help, -h            Show this help\n";
         return 0;
@@ -88,13 +90,15 @@ int main(int argc, char* argv[]) {
 
     auto port_str     = get_arg(argc, argv, "--port",      "TTE_PORT",      "9100");
     auto interval_str = get_arg(argc, argv, "--interval",  "TTE_INTERVAL",  "1");
+    auto topn_str     = get_arg(argc, argv, "--top-n",     "TTE_TOP_N",     "5");
     auto log_str      = get_arg(argc, argv, "--log-level", "TTE_LOG_LEVEL", "info");
 
     try {
         config.port     = static_cast<uint16_t>(std::stoi(port_str));
         config.interval = std::stoi(interval_str);
+        config.top_n    = std::clamp(std::stoi(topn_str), 1, 10);
     } catch (...) {
-        std::cerr << "Error: invalid --port or --interval value.\n";
+        std::cerr << "Error: invalid --port, --interval, or --top-n value.\n";
         return 1;
     }
 
@@ -124,6 +128,7 @@ int main(int argc, char* argv[]) {
     agent.add_collector(create_cpu_collector());
     agent.add_collector(create_memory_collector());
     agent.add_collector(create_system_collector());
+    agent.add_collector(create_process_collector(config.top_n, &agent));
 #else
     agent.log_info("No collectors available for this platform yet.");
 #endif

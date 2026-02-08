@@ -5,4 +5,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     maximize: () => ipcRenderer.send('window-maximize'),
     close: () => ipcRenderer.send('window-close'),
     platform: process.platform,
+    onUpdateReady: (cb) => ipcRenderer.on('update-ready', (_, version) => cb(version)),
+    installUpdate: () => ipcRenderer.send('install-update'),
 });

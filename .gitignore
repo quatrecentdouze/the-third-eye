@@ -52,3 +52,8 @@ logs/
 # ---------- Env / secrets ----------
 .env
 .env.*
+
+# ---------- Misc ----------
+.agent/
+RELEASE_PLAN.md
+summary.md

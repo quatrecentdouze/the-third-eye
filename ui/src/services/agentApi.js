@@ -26,6 +26,12 @@ export async function postConfig(config) {
     return res.json();
 }
 
+export async function fetchAlerts() {
+    const res = await fetch(`${BASE}/api/alerts`, { signal: AbortSignal.timeout(3000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
 export async function testConnection() {
     try {
         await fetchStatus();

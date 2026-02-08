@@ -39,7 +39,7 @@
 
 
 #ifndef THIRD_EYE_VERSION
-  #define THIRD_EYE_VERSION "1.0.0"
+  #define THIRD_EYE_VERSION "1.1.1"
 #endif
 #ifndef THIRD_EYE_GIT_COMMIT
   #define THIRD_EYE_GIT_COMMIT "unknown"
@@ -242,6 +242,10 @@ void HttpServer::handle_client(uintptr_t client_socket) {
         return;
     }
 
+    if (method == "GET" && path == "/api/alerts") {
+        send_response(client_socket, 200, "application/json", handle_api_alerts());
+        return;
+    }
 
     if (method == "POST" && path == "/api/config") {
 
@@ -361,6 +365,23 @@ std::string HttpServer::handle_api_status() {
         out << "}";
     }
 
+    if (agent_) {
+        auto procs = agent_->get_processes();
+        out << R"(,"top_processes":[)";
+        for (size_t i = 0; i < procs.size(); ++i) {
+            if (i > 0) out << ",";
+            out << R"({"pid":)" << procs[i].pid
+                << R"(,"name":")" << json_escape(procs[i].name) << "\""
+                << R"(,"cpu_percent":)" << json_double(procs[i].cpu_percent)
+                << R"(,"memory_bytes":)" << procs[i].memory_bytes
+                << "}";
+        }
+        out << "]";
+
+        auto active = agent_->active_alerts();
+        out << R"(,"active_alerts_count":)" << active.size();
+    }
+
     out << "}";
     return out.str();
 }
@@ -430,6 +451,40 @@ std::string HttpServer::handle_api_config_post(const std::string& body) {
     agent_->update_config(interval, log_level);
 
     return R"({"ok":true})";
+}
+
+std::string HttpServer::handle_api_alerts() {
+    if (!agent_) return R"({"active":[],"history":[]})";
+
+    std::ostringstream out;
+    out.imbue(std::locale::classic());
+
+    auto all = agent_->get_alerts();
+    auto active = agent_->active_alerts();
+
+    auto write_alert = [&](const auto& a, bool first) {
+        if (!first) out << ",";
+        out << R"({"type":")" << json_escape(a.type) << "\""
+            << R"(,"severity":")" << json_escape(a.severity) << "\""
+            << R"(,"message":")" << json_escape(a.message) << "\""
+            << R"(,"timestamp":")" << json_escape(a.timestamp) << "\""
+            << R"(,"value":)" << json_double(a.value)
+            << R"(,"threshold":)" << json_double(a.threshold)
+            << R"(,"active":)" << (a.active ? "true" : "false")
+            << "}";
+    };
+
+    out << R"({"active":[)";
+    for (size_t i = 0; i < active.size(); ++i) {
+        write_alert(active[i], i == 0);
+    }
+    out << R"(],"history":[)";
+    for (size_t i = 0; i < all.size(); ++i) {
+        write_alert(all[i], i == 0);
+    }
+    out << "]}";
+
+    return out.str();
 }
 
 }

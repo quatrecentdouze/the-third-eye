@@ -1,6 +1,6 @@
 {
   "name": "the-third-eye-ui",
-  "version": "1.0.0",
+  "version": "1.1.1",
   "description": "Premium desktop UI for the-third-eye monitoring agent",
   "author": "tlmreact",
   "main": "electron/main.js",
@@ -21,11 +21,30 @@
       "dist/**/*",
       "electron/**/*"
     ],
+    "extraResources": [
+      {
+        "from": "../build/the_third_eye.exe",
+        "to": "agent/the_third_eye.exe"
+      }
+    ],
     "win": {
-      "target": "portable"
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "shortcutName": "The Third Eye"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "quatrecentdouze",
+      "repo": "the-third-eye"
     }
   },
   "dependencies": {
+    "electron-updater": "^6.6.2",
     "fontnotawesome": "^1.1.9",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

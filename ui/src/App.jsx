@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Icon } from 'fontnotawesome';
 import 'fontnotawesome/css/all.css';
-import { fetchStatus } from './services/agentApi.js';
+import { fetchStatus, fetchAlerts } from './services/agentApi.js';
 import Dashboard from './components/Dashboard.jsx';
 import LogViewer from './components/LogViewer.jsx';
 import Settings from './components/Settings.jsx';
 import About from './components/About.jsx';
+import Alerts from './components/Alerts.jsx';
 
 const NAV_ITEMS = [
     { id: 'dashboard', label: 'Dashboard', icon: 'chart-line' },
+    { id: 'alerts', label: 'Alerts', icon: 'bell' },
     { id: 'logs', label: 'Logs', icon: 'terminal' },
     { id: 'settings', label: 'Settings', icon: 'gear' },
     { id: 'about', label: 'About', icon: 'circle-info' },
@@ -19,13 +21,22 @@ export default function App() {
     const [status, setStatus] = useState(null);
     const [connected, setConnected] = useState(false);
     const [history, setHistory] = useState([]);
+    const [alertCount, setAlertCount] = useState(0);
+    const [updateVersion, setUpdateVersion] = useState(null);
     const MAX_HISTORY = 180;
+
+    useEffect(() => {
+        if (window.electronAPI?.onUpdateReady) {
+            window.electronAPI.onUpdateReady((version) => setUpdateVersion(version));
+        }
+    }, []);
 
     const pollStatus = useCallback(async () => {
         try {
             const data = await fetchStatus();
             setStatus(data);
             setConnected(true);
+            setAlertCount(data.active_alerts_count || 0);
             setHistory(prev => {
                 const next = [...prev, {
                     time: Date.now(),
@@ -50,6 +61,7 @@ export default function App() {
     const renderPage = () => {
         switch (page) {
             case 'dashboard': return <Dashboard status={status} connected={connected} history={history} onRetry={pollStatus} />;
+            case 'alerts': return <Alerts />;
             case 'logs': return <LogViewer />;
             case 'settings': return <Settings status={status} connected={connected} />;
             case 'about': return <About status={status} connected={connected} />;
@@ -65,6 +77,16 @@ export default function App() {
                     <div className="brand-sub">System Monitor</div>
                 </div>
 
+                {updateVersion && (
+                    <div className="update-banner">
+                        <div style={{ fontSize: 12, fontWeight: 600 }}>v{updateVersion} available</div>
+                        <button className="btn btn-primary" style={{ fontSize: 11, padding: '4px 10px', marginTop: 4 }}
+                            onClick={() => window.electronAPI?.installUpdate()}>
+                            <Icon icon="rotate" style={{ marginRight: 4 }} />Update now
+                        </button>
+                    </div>
+                )}
+
                 <nav className="sidebar-nav">
                     {NAV_ITEMS.map(item => (
                         <button
@@ -74,6 +96,9 @@ export default function App() {
                         >
                             <span className="nav-icon"><Icon icon={item.icon} /></span>
                             {item.label}
+                            {item.id === 'alerts' && alertCount > 0 && (
+                                <span className="nav-badge">{alertCount}</span>
+                            )}
                         </button>
                     ))}
                 </nav>
