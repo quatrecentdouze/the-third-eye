@@ -1,6 +1,6 @@
 {
   "name": "the-third-eye-ui",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "Premium desktop UI for the-third-eye monitoring agent",
   "author": "tlmreact",
   "main": "electron/main.js",
